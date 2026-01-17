@@ -5,7 +5,7 @@ PYTHON 3.12 / 3.14
 # pklib.bc - python bytecode lib by PaketSoftware
 # pklib.jit - python jit bytecode translator+optimizator by PaketSoftware
 
-# features pklib.jit:
+features pklib.jit:
     @struct     register class as struct
     @enum       register class as enum
     @structs    jit struct2tuple compilation
