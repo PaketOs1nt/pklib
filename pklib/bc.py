@@ -3,7 +3,8 @@ v1.12
 
 PYTHON 3.12 / 3.14
 
-pklib.bc - Python bytecode lib by PaketSoftware
+pklib.bc - python bytecode lib by PaketSoftware
+
 MY GITHUB: https://github.com/PaketOs1nt
 MY TELEGRAM: @paketls
 MY TELEGRAM CHANNEL: @paketpksoftware
@@ -16,7 +17,6 @@ import importlib._bootstrap_external as imp_b
 import sys
 from types import CodeType
 from typing import Iterator
-
 
 type instr = tuple[str, int, int, int]  # 3.12 type style
 
