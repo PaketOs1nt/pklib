@@ -15,8 +15,8 @@ MIT LICENSE
 import dis
 import importlib._bootstrap_external as imp_b
 import sys
-from types import CodeType
-from typing import Iterator
+
+import pklib.ty as ty
 
 type instr = tuple[str, int, int, int]  # 3.12 type style
 
@@ -366,7 +366,7 @@ if sys.version_info.minor == 12:
     def fast_name(i: int) -> str:
         return map[i]
 
-    def unpack(code: bytes | bytearray, unpacker=fast_name) -> Iterator[instr]:
+    def unpack(code: bytes | bytearray, unpacker=fast_name) -> ty.iter[instr]:
         for pos, op, arg in dis._unpack_opargs(code):  # type: ignore
             yield (unpacker(op), op, arg, pos)
 
@@ -909,10 +909,10 @@ elif sys.version_info.minor == 14:
     def fast_name(i: int) -> str:
         return map[i]
 
-    def unpack(code: bytes | bytearray, unpacker=fast_name) -> Iterator[instr]:
+    def unpack(code: bytes | bytearray, unpacker=fast_name) -> ty.iter[instr]:
         for pos, _, op, arg in dis._unpack_opargs(code):  # type: ignore
             yield (unpacker(op), op, arg, pos)
 
 
-def code_to_pyc(code: CodeType) -> bytes:
+def code_to_pyc(code: ty.code) -> bytes:
     return imp_b._code_to_timestamp_pyc(code)  # type: ignore

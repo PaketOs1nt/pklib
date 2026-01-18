@@ -1,48 +1,50 @@
-import pklib.bc
-from pklib.jit import enum, enums, goto, gotos, label, struct, structs
+import pklib.bc as bc
+import pklib.jit as jit
+from pklib.bus import _bus, bus
+from pklib.jit import goto, label
 
 
-@enum
-class Enum:
-    A = 1
-    B = 2
-    C = 3
-    D = 4
+@jit.struct
+class httpevent:
+    method: str
+    body: bytes
 
 
-@struct
-class Point:
-    x: int
-    y: int
+@jit.structs
+def handler(event: httpevent):
+    print("handled httpevent", event)
 
 
-@enums
-@gotos
-@structs
-def test():
-    a = Enum.C
-    if a == Enum.A:
-        print("a == Enum.A", a)
-    elif a == Enum.C:
-        print("a == Enum.C", a)
-    else:
-        label.imstupidkid
-        print("unreal on legit code")
-        return
+@jit.structs
+def main():
+    "jit.ty!b=_bus"
+    # создаем EventBus с максимальным количеством евентов (НЕ ХЕНДЛЕРОВ) - 1:
+    b = bus(1)
 
-    p = Point(22, 45)
-    print("point x", p.x)
-    print("point y", p.y)
+    # добавляем слушателя handler к евенту 0
+    b.add(0, handler)
 
-    print("point", p)
-
-    if p.x + p.y == 67:
-        goto.imstupidkid
-
-    return
+    b.emit(0, httpevent("POST", b"example event body 1"))
+    b.emit(0, httpevent("POST", b"example event body 2"))
+    b.emit(0, httpevent("POST", b"example event body 3"))
 
 
-test()
+main()
 
-with open("dump.pyc", "wb") as f:
-    f.write(pklib.bc.code_to_pyc(test.__code__))
+# with open("dump.pyc", "wb") as f:
+#     f.write(pklib.bc.code_to_pyc(test.__code__))
+
+
+@jit.gotos
+def with_goto():
+    for a in range(100):
+        for b in range(100):
+            for c in range(100):
+                if a + b + c == 123:
+                    print(a, b, c)
+                    goto.fast_exit_loop
+
+    label.fast_exit_loop
+
+
+with_goto()
