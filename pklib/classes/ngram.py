@@ -2,8 +2,7 @@ import abc
 import difflib
 import random
 from functools import lru_cache
-from typing import Callable
-
+import pklib.ty as ty
 
 class BaseScorer[T](abc.ABC):
     @abc.abstractmethod
@@ -75,13 +74,13 @@ class Model[T]:
     def sequence(
         self,
         data: tuple[T, ...],
-        lenth: int,
+        length: int,
         stop_token: T | None = None,
-        on_token: Callable[[T], None] = lambda x: None,
+        on_token: ty.cb[[T], None] = lambda _: None,
     ) -> tuple[T, ...]:
         current = data
         final = []
-        for _ in range(lenth):
+        for _ in range(length):
             result = self.smart_predict(current)
             if result is None or (result == stop_token and stop_token is not None):
                 break
