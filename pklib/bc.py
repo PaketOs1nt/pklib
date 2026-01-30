@@ -14,6 +14,7 @@ MIT LICENSE
 
 import dis
 import importlib._bootstrap_external as imp_b
+import marshal
 import sys
 
 import pklib.ty as ty
@@ -916,3 +917,7 @@ elif sys.version_info.minor == 14:
 
 def code_to_pyc(code: ty.code) -> bytes:
     return imp_b._code_to_timestamp_pyc(code)  # type: ignore
+
+
+def code_from_pyc(pyc: bytes) -> ty.code:
+    return marshal.loads(pyc[16:])
