@@ -5,32 +5,41 @@ import pklib.bc as bc
 import pklib.ty as ty
 
 bin_ops = (
-    (ast.Add),
-    (ast.BitAnd),
-    (ast.FloorDiv),
-    (ast.LShift),
-    (ast.MatMult),
-    (ast.Mult),
-    (ast.Mod),
-    (ast.BitOr),
-    (ast.Pow),
-    (ast.RShift),
-    (ast.Sub),
-    (ast.Div),
-    (ast.BitXor),
-    (ast.Add),  # AugAssign
-    (ast.BitAnd),
-    (ast.FloorDiv),
-    (ast.LShift),
-    (ast.MatMult),
-    (ast.Mult),
-    (ast.Mod),
-    (ast.BitOr),
-    (ast.Pow),
-    (ast.RShift),
-    (ast.Sub),
-    (ast.Div),
-    (ast.BitXor),
+    ast.Add,
+    ast.BitAnd,
+    ast.FloorDiv,
+    ast.LShift,
+    ast.MatMult,
+    ast.Mult,
+    ast.Mod,
+    ast.BitOr,
+    ast.Pow,
+    ast.RShift,
+    ast.Sub,
+    ast.Div,
+    ast.BitXor,
+    ast.Add,  # AugAssign
+    ast.BitAnd,
+    ast.FloorDiv,
+    ast.LShift,
+    ast.MatMult,
+    ast.Mult,
+    ast.Mod,
+    ast.BitOr,
+    ast.Pow,
+    ast.RShift,
+    ast.Sub,
+    ast.Div,
+    ast.BitXor,
+)
+
+compare_ops = (
+    ast.Lt,
+    ast.LtE,
+    ast.Eq,
+    ast.NotEq,
+    ast.Gt,
+    ast.GtE,
 )
 
 
@@ -82,6 +91,8 @@ def dec312(c: ty.code) -> str:
     module = ast.Module([], [])
     obj = module
 
+    if_stack: list[int] = [-1]
+
     # ctx: list[Context] = []
     stack: list[ast.expr | ty.any] = [ast.Constant(None) for _ in range(512)]
     stack_ptr = 0
@@ -97,168 +108,194 @@ def dec312(c: ty.code) -> str:
         return stack[stack_ptr + 1]
 
     for opcode, op, arg, pos in bc.unpack(c.co_code):
-        # print(pos, opcode, op, arg)
-        match op:
-            case bc.IMPORT_NAME:
-                pop()
-                push(ast.Import([ast.alias(c.co_names[arg])]))
+        try:
+            # print(pos, opcode, op, arg)
 
-            case bc.IMPORT_FROM:
-                imp: ast.Import | ty.any = stack[stack_ptr]
-                push(ast.ImportFrom(imp.names[0].name, [ast.alias(c.co_names[arg])], 0))
+            if if_stack[-1] == pos:
+                print(obj, pos, if_stack)
+                if_stack.pop()
 
-            case bc.LOAD_CONST:
-                push(ast.Constant(c.co_consts[arg]))
-
-            case bc.LOAD_NAME:
-                push(ast.Name(c.co_names[arg], ctx=ast.Load()))
-
-            case bc.LOAD_FAST:
-                push(ast.Name(c.co_varnames[arg], ctx=ast.Load()))
-
-            case bc.LOAD_GLOBAL:
-                push(ast.Name(c.co_names[arg >> 1], ctx=ast.Load()))
-
-            case bc.CALL:
-                args = [pop() for _ in range(arg)][::-1]
-                func = pop()
-                push(ast.Call(func, args, []))
-
-            case bc.POP_TOP:
-                d = pop()
-                if not isinstance(d, ast.Import):
-                    obj.body.append(ast.Expr(d))
-
-            case bc.LOAD_ATTR:
-                push(ast.Attribute(pop(), c.co_names[arg >> 1], ast.Load()))
-
-            case bc.BINARY_OP:
-                b, a = pop(), pop()
-                push(ast.BinOp(a, bin_ops[arg](), b))
-
-            case bc.RETURN_VALUE:
-                obj.body.append(ast.Return(pop()))
-                if hasattr(obj, "_back"):
-                    obj = obj._back  # type: ignore
-
-            case bc.RETURN_CONST:
-                const = c.co_consts[arg]
-                if const is None:
-                    if not isinstance(obj, ast.Module):
-                        obj.body.append(ast.Return())
-                else:
-                    obj.body.append(ast.Return(ast.Constant(const)))
-
-                if hasattr(obj, "_back"):
-                    obj = obj._back  # type: ignore
-
-            case bc.FOR_ITER:
-                pass
-
-            case bc.BUILD_TUPLE:
-                push(ast.Tuple([pop() for _ in range(arg)][::-1], ast.Load()))
-
-            case bc.BUILD_LIST:
-                push(ast.List([pop() for _ in range(arg)][::-1], ast.Load()))
-
-            case bc.BUILD_SET:
-                push(ast.Set([pop() for _ in range(arg)][::-1]))
-
-            case bc.GET_ITER:
-                nf = ast.For(ast.Name("<?>"), pop(), [], [], lineno=-1)
-                nf._back = obj  # type: ignore
-                obj = nf
-
-            case bc.JUMP_BACKWARD:
-                if isinstance(obj, ast.For):
-                    obj.body.append(ast.Continue())
-
-            case bc.STORE_NAME:
-                val = pop()
-
-                if isinstance(obj, ast.For) and obj.target.id == "<?>":
-                    obj.target.id = c.co_names[arg]
-                    continue
-
-                if isinstance(val, ast.Import):
-                    name = c.co_names[arg]
-                    # if name != val.names[0].name:
-                    #     val.names[0].asname = name
-                    obj.body.append(val)
-
-                elif isinstance(val, ast.ImportFrom):
-                    name = c.co_names[arg >> 1]
-                    # print(val.names[0].name, val.module)
-                    # if name != val.names[0]:
-                    #     val.names[0].asname = name
-                    obj.body.append(val)
-
-                elif isinstance(val, ast.FunctionDef):
-                    obj.body.append(val)
-
-                else:
-                    obj.body.append(
-                        ast.Assign([ast.Name(c.co_names[arg])], val, lineno=-1)
-                    )
-
-            case bc.END_FOR:
-                ff = obj
+                b = obj
                 obj = obj._back  # type: ignore
-                obj.body.append(ff)
+                obj.body.append(b)
 
-            case bc.STORE_FAST:
-                val = pop()
+            match op:
+                case bc.IMPORT_NAME:
+                    pop()
+                    push(ast.Import([ast.alias(c.co_names[arg])]))
 
-                if isinstance(obj, ast.For) and obj.target.id == "<?>":
-                    obj.target.id = c.co_varnames[arg]
-                    continue
+                case bc.IMPORT_FROM:
+                    imp: ast.Import | ty.any = stack[stack_ptr]
+                    push(
+                        ast.ImportFrom(
+                            imp.names[0].name, [ast.alias(c.co_names[arg])], 0
+                        )
+                    )
 
-                if isinstance(val, ast.Import):
-                    name = c.co_varnames[arg]
-                    # if name != val.names[0].name:
-                    #     val.names[0].asname = name
-                    obj.body.append(val)
+                case bc.LOAD_CONST:
+                    push(ast.Constant(c.co_consts[arg]))
 
-                elif isinstance(val, ast.ImportFrom):
-                    name = c.co_varnames[arg]
-                    # print(val.names[0].name, val.module)
-                    # if name != val.names[0]:
-                    #     val.names[0].asname = name
-                    obj.body.append(val)
+                case bc.LOAD_NAME:
+                    push(ast.Name(c.co_names[arg], ctx=ast.Load()))
 
-                elif isinstance(val, ast.FunctionDef):
-                    obj.body.append(val)
-                else:
+                case bc.LOAD_FAST:
+                    push(ast.Name(c.co_varnames[arg], ctx=ast.Load()))
+
+                case bc.LOAD_GLOBAL:
+                    push(ast.Name(c.co_names[arg >> 1], ctx=ast.Load()))
+
+                case bc.CALL:
+                    args = [pop() for _ in range(arg)][::-1]
+                    func = pop()
+                    push(ast.Call(func, args, []))
+
+                case bc.POP_TOP:
+                    d = pop()
+                    if not isinstance(d, ast.Import):
+                        obj.body.append(ast.Expr(d))
+
+                case bc.LOAD_ATTR:
+                    push(ast.Attribute(pop(), c.co_names[arg >> 1], ast.Load()))
+
+                case bc.BINARY_OP:
+                    b, a = pop(), pop()
+                    push(ast.BinOp(a, bin_ops[arg](), b))
+
+                case bc.COMPARE_OP:
+                    b, a = pop(), pop()
+                    push(ast.Compare(a, [compare_ops[arg >> 4]()], [b]))
+
+                case bc.RETURN_VALUE:
+                    obj.body.append(ast.Return(pop()))
+                    if hasattr(obj, "_back"):
+                        obj = obj._back  # type: ignore
+
+                case bc.RETURN_CONST:
+                    const = c.co_consts[arg]
+                    if const is None:
+                        if not isinstance(obj, ast.Module):
+                            obj.body.append(ast.Return())
+                    else:
+                        obj.body.append(ast.Return(ast.Constant(const)))
+
+                    if hasattr(obj, "_back") and not isinstance(obj, ast.If):
+                        obj = obj._back  # type: ignore
+
+                case bc.FOR_ITER:
+                    pass
+
+                case bc.BUILD_TUPLE:
+                    push(ast.Tuple([pop() for _ in range(arg)][::-1], ast.Load()))
+
+                case bc.BUILD_LIST:
+                    push(ast.List([pop() for _ in range(arg)][::-1], ast.Load()))
+
+                case bc.BUILD_SET:
+                    push(ast.Set([pop() for _ in range(arg)][::-1]))
+
+                case bc.GET_ITER:
+                    nf = ast.For(ast.Name("<?>"), pop(), [], [], lineno=-1)
+                    nf._back = obj  # type: ignore
+                    obj = nf
+
+                case bc.JUMP_BACKWARD:
+                    if isinstance(obj, ast.For):
+                        obj.body.append(ast.Continue())
+
+                case bc.POP_JUMP_IF_FALSE:
+                    if_stack.append(pos + arg * 2 + 2)
+                    nf = ast.If(pop(), [], [], lineno=-1)
+                    nf._back = obj  # type: ignore
+                    obj = nf
+
+                case bc.STORE_NAME:
+                    val = pop()
+
+                    if isinstance(obj, ast.For) and obj.target.id == "<?>":
+                        obj.target.id = c.co_names[arg]
+                        continue
+
+                    if isinstance(val, ast.Import):
+                        name = c.co_names[arg]
+                        # if name != val.names[0].name:
+                        #     val.names[0].asname = name
+                        obj.body.append(val)
+
+                    elif isinstance(val, ast.ImportFrom):
+                        name = c.co_names[arg >> 1]
+                        # print(val.names[0].name, val.module)
+                        # if name != val.names[0]:
+                        #     val.names[0].asname = name
+                        obj.body.append(val)
+
+                    elif isinstance(val, ast.FunctionDef):
+                        obj.body.append(val)
+
+                    else:
+                        obj.body.append(
+                            ast.Assign([ast.Name(c.co_names[arg])], val, lineno=-1)
+                        )
+
+                case bc.END_FOR:
+                    ff = obj
+                    obj = obj._back  # type: ignore
+                    obj.body.append(ff)
+
+                case bc.STORE_FAST:
+                    val = pop()
+
+                    if isinstance(obj, ast.For) and obj.target.id == "<?>":
+                        obj.target.id = c.co_varnames[arg]
+                        continue
+
+                    if isinstance(val, ast.Import):
+                        name = c.co_varnames[arg]
+                        # if name != val.names[0].name:
+                        #     val.names[0].asname = name
+                        obj.body.append(val)
+
+                    elif isinstance(val, ast.ImportFrom):
+                        name = c.co_varnames[arg]
+                        # print(val.names[0].name, val.module)
+                        # if name != val.names[0]:
+                        #     val.names[0].asname = name
+                        obj.body.append(val)
+
+                    elif isinstance(val, ast.FunctionDef):
+                        obj.body.append(val)
+                    else:
+                        obj.body.append(
+                            ast.Assign([ast.Name(c.co_varnames[arg])], val, lineno=-1)
+                        )
+
+                case bc.MAKE_FUNCTION:
+                    f: ty.code = pop().value  # type: ignore
+
+                    push(
+                        ast.FunctionDef(
+                            f.co_name,
+                            arguments_from_codeobj(f),
+                            ast.parse(dec312(f)).body,
+                            [],
+                            None,
+                            None,
+                            [],
+                            lineno=-1,
+                        )
+                    )
+
+                case bc.PUSH_NULL:
+                    pass
+
+                case bc.RESUME:
+                    pass
+
+                case other:
                     obj.body.append(
-                        ast.Assign([ast.Name(c.co_varnames[arg])], val, lineno=-1)
+                        ast.Expr(ast.Constant(f"UNKNOWN OPCODE: {bc.fast_name(other)}"))
                     )
-
-            case bc.MAKE_FUNCTION:
-                f: ty.code = pop().value  # type: ignore
-
-                push(
-                    ast.FunctionDef(
-                        f.co_name,
-                        arguments_from_codeobj(f),
-                        ast.parse(dec312(f)).body,
-                        [],
-                        None,
-                        None,
-                        [],
-                        lineno=-1,
-                    )
-                )
-
-            case bc.PUSH_NULL:
-                pass
-
-            case bc.RESUME:
-                pass
-
-            case other:
-                obj.body.append(
-                    ast.Expr(ast.Constant(f"UNKNOWN OPCODE: {bc.fast_name(other)}"))
-                )
+        except Exception as e:
+            obj.body.append(ast.Expr(ast.Constant(f"ERROR: {e}")))
 
     pfix = Postfix312()
     return ast.unparse(pfix.visit(module))
